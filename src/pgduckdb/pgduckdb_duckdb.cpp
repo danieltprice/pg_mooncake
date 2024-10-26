@@ -20,6 +20,9 @@ extern "C" {
 #include "pgduckdb/pgduckdb_utils.hpp"
 #include "pgduckdb/catalog/pgduckdb_storage.hpp"
 
+namespace duckdb {
+void DuckDBLoadSecrets(duckdb::ClientContext &context);
+}
 namespace pgduckdb {
 
 DuckDBManager::DuckDBManager() {
@@ -122,7 +125,7 @@ DuckDBManager::LoadFunctions(duckdb::ClientContext &context) {
 
 int64
 GetSeqLastValue(const char *seq_name) {
-	Oid duckdb_namespace = get_namespace_oid("duckdb", false);
+	Oid duckdb_namespace = get_namespace_oid("mooncake", false);
 	Oid table_seq_oid = get_relname_relid(seq_name, duckdb_namespace);
 	return PostgresFunctionGuard<int64>(DirectFunctionCall1Coll, pg_sequence_last_value, InvalidOid, table_seq_oid);
 }
@@ -200,20 +203,21 @@ DuckDBManager::LoadExtensions(duckdb::ClientContext &context) {
 
 duckdb::unique_ptr<duckdb::Connection>
 DuckDBManager::CreateConnection() {
-	if (!pgduckdb::IsDuckdbExecutionAllowed()) {
-		elog(ERROR, "DuckDB execution is not allowed because you have not been granted the duckdb.postgres_role");
-	}
+	// if (!pgduckdb::IsDuckdbExecutionAllowed()) {
+	// 	elog(ERROR, "DuckDB execution is not allowed because you have not been granted the duckdb.postgres_role");
+	// }
 
 	auto &instance = Get();
 	auto connection = duckdb::make_uniq<duckdb::Connection>(*instance.database);
 	auto &context = *connection->context;
 
-	// const auto secret_table_last_seq = GetSeqLastValue("secrets_table_seq");
-	// if (instance.IsSecretSeqLessThan(secret_table_last_seq)) {
-	// 	instance.DropSecrets(context);
-	// 	instance.LoadSecrets(context);
-	// 	instance.UpdateSecretSeq(secret_table_last_seq);
-	// }
+	const auto secret_table_last_seq = GetSeqLastValue("secrets_table_seq");
+	if (instance.IsSecretSeqLessThan(secret_table_last_seq)) {
+		instance.DropSecrets(context);
+		// instance.LoadSecrets(context);
+		duckdb::DuckDBLoadSecrets(context);
+		instance.UpdateSecretSeq(secret_table_last_seq);
+	}
 
 	// const auto extensions_table_last_seq = GetSeqLastValue("extensions_table_seq");
 	// if (instance.IsExtensionsSeqLessThan(extensions_table_last_seq)) {

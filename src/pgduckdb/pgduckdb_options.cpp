@@ -24,12 +24,12 @@ namespace pgduckdb {
 
 static Oid
 GetDuckdbNamespace(void) {
-	return get_namespace_oid("duckdb", false);
+	return get_namespace_oid("mooncake", false);
 }
 
 static Oid
 SecretsTableRelationId(void) {
-	return get_relname_relid("secrets", GetDuckdbNamespace());
+	return get_relname_relid("duckdb_secrets", GetDuckdbNamespace());
 }
 
 static Oid
